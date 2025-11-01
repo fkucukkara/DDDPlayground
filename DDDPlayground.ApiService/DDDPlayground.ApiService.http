@@ -1,0 +1,28 @@
+@ApiService_HostAddress = http://localhost:5472
+
+### Create Order
+POST {{ApiService_HostAddress}}/api/orders
+Content-Type: application/json
+
+{
+  "customerId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "items": [
+    {
+      "productId": "8fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "quantity": 2,
+      "unitPrice": 99.99,
+      "currency": "USD"
+    }
+  ]
+}
+
+### Get Order (replace {orderId} with actual GUID from create response)
+@orderId = 00000000-0000-0000-0000-000000000000
+GET {{ApiService_HostAddress}}/api/orders/{{orderId}}
+Accept: application/json
+
+### Confirm Order
+POST {{ApiService_HostAddress}}/api/orders/{{orderId}}/confirm
+Content-Type: application/json
+
+###
