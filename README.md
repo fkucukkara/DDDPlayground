@@ -400,20 +400,6 @@ public static class OrderMapper
 - [Clean Architecture by Robert C. Martin](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
 - [ASP.NET Core Minimal APIs](https://learn.microsoft.com/aspnet/core/fundamentals/minimal-apis)
 
-## 🤝 Contributing
-
-This is an educational project. Contributions that improve clarity, add documentation, or demonstrate additional patterns are welcome!
-
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Eric Evans for Domain-Driven Design principles
-- Microsoft for .NET Aspire and excellent tooling
-- The .NET community for best practices and patterns
-
----
-
-**Built with ❤️ for learning and teaching DDD**

@@ -111,7 +111,7 @@ public static class OrderEndpoints
     }
 
     /// <summary>
-    /// Confirm an order (change status from Pending to Confirmed).
+    /// Confirm an order (change status from Draft to Confirmed).
     /// </summary>
     private static async Task<Results<Ok<OrderResponse>, NotFound<ProblemDetails>, BadRequest<ProblemDetails>>> ConfirmOrderAsync(
         Guid id,
