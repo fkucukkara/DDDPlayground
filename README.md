@@ -8,14 +8,14 @@
 
 ## 📋 Table of Contents
 
-- [Overview](#overview)
-- [Architecture](#architecture)
-- [Key Patterns Demonstrated](#key-patterns-demonstrated)
-- [Technology Stack](#technology-stack)
-- [Getting Started](#getting-started)
-- [Project Structure](#project-structure)
-- [API Endpoints](#api-endpoints)
-- [Learning Resources](#learning-resources)
+- [Overview](#-overview)
+- [Architecture](#️-architecture)
+- [Key Patterns Demonstrated](#-key-patterns-demonstrated)
+- [Technology Stack](#️-technology-stack)
+- [Getting Started](#-getting-started)
+- [Project Structure](#-project-structure)
+- [API Endpoints](#-api-endpoints)
+- [Learning Resources](#-learning-resources)
 
 ## 🎯 Overview
 
@@ -34,7 +34,7 @@ This project is an **educational showcase** of DDD tactical patterns, Clean Arch
 
 ### Layer Overview
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │                    Presentation Layer                    │
 │              (DDDPlayground.ApiService)                  │
@@ -158,14 +158,14 @@ dotnet run
 
 Once running, you'll see:
 
-- **Aspire Dashboard**: http://localhost:15000
+- **Aspire Dashboard**: <http://localhost:15000>
   - View traces, metrics, logs
   - Monitor service health
   - Access PostgreSQL admin (pgAdmin)
 
-- **API Service**: https://localhost:7001 (or port shown in console)
-  - Swagger UI: https://localhost:7001/openapi
-  - API endpoints: https://localhost:7001/api/orders
+- **API Service**: <https://localhost:7001> (or port shown in console)
+  - Swagger UI: <https://localhost:7001/openapi>
+  - API endpoints: <https://localhost:7001/api/orders>
 
 ### Database Migrations
 
@@ -181,7 +181,7 @@ dotnet ef database update --project DDDPlayground.Infrastructure --startup-proje
 
 ## 📁 Project Structure
 
-```
+```text
 DDDPlayground/
 ├── .github/                          # GitHub Actions, issue templates
 ├── DDDPlayground.AppHost/            # Aspire orchestration host
@@ -276,7 +276,8 @@ Content-Type: application/json
 }
 ```
 
-**Response: 201 Created**
+##### Response: 201 Created
+
 ```json
 {
   "id": "1fa85f64-5717-4562-b3fc-2c963f66afa6",
