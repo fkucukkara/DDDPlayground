@@ -1,128 +1,297 @@
 ---
-description: 'Guidelines for building C# applications with modern best practices'
-applyTo: '**/*.cs'
+description: 'DDD Playground - Educational showcase demonstrating DDD, Clean Architecture, and .NET Aspire'
+applyTo: '**/*'
 ---
 
-# C# Development Guidelines
+# DDD Playground Project Guide
 
-## C# Language Features
-- Always use the latest version C#, currently C# 13 features
-- Leverage pattern matching, nullable reference types, and modern language constructs
-- Use file-scoped namespace declarations and global using statements
-- Prefer record types for immutable data models
-- Use primary constructors where appropriate
+This is an **educational showcase** of Domain-Driven Design (DDD) tactical patterns, Clean Architecture, and .NET Aspire. Focus: simplified order management system demonstrating key concepts through working code.
 
-## Code Quality Standards
-- Write clear and concise comments for complex logic and design decisions
-- Handle edge cases and implement comprehensive exception handling
-- For external dependencies, document their usage and purpose in comments
-- Follow SOLID principles and clean code practices
-- Implement proper logging using structured logging (Serilog, NLog, etc.)
+## Architecture & Layer Rules
 
-## Naming Conventions
-- Follow PascalCase for component names, method names, and public members
-- Use camelCase for private fields and local variables
-- Prefix interface names with "I" (e.g., IUserService)
-- Use meaningful names that express intent
-- Avoid abbreviations and single-letter variables (except loop counters)
+### Clean Architecture Layers (Strict Dependency Flow)
 
-## Formatting and Style
-- Apply code-formatting style defined in `.editorconfig`
-- Prefer file-scoped namespace declarations
-- Insert a newline before the opening curly brace of any code block
-- Ensure that the final return statement of a method is on its own line
-- Use pattern matching and switch expressions wherever possible
-- Use `nameof` instead of string literals when referring to member names
-- Ensure XML doc comments are created for all public APIs with `<example>` tags when applicable
+```
+Domain (core) → Application → Infrastructure → ApiService (presentation)
+```
 
-## Modern .NET Practices
-- Use dependency injection and the built-in IoC container
-- Implement configuration using the Options pattern
-- Use minimal APIs for simple HTTP endpoints
-- Leverage middleware for cross-cutting concerns
-- Implement health checks for production applications
+**CRITICAL: Domain layer has ZERO dependencies** - no EF Core, no MediatR, no external libraries.
 
-## Security Best Practices
-- Always validate input data and sanitize outputs
-- Use parameterized queries to prevent SQL injection
-- Implement proper authentication and authorization
-- Follow OWASP security guidelines
-- Use secure communication protocols (HTTPS, secure connections)
+1. **Domain** (`DDDPlayground.Domain/`) - Pure business logic
+   - Aggregates (`Order`, `OrderItem`), Value Objects (`Money`, `OrderId`, `CustomerId`)
+   - Domain Services (`PricingService`), Domain Events (`OrderCreatedEvent`)
+   - Repository interfaces (`IOrderRepository`) - implemented in Infrastructure
+   - NO persistence attributes, NO EF annotations, NO data access code
 
-## Performance Optimization
-- Use async/await for I/O-bound operations
-- Implement caching strategies where appropriate
-- Use memory-efficient data structures and algorithms
-- Profile and optimize critical code paths
-- Consider using `Span<T>` and `Memory<T>` for high-performance scenarios
+2. **Application** (`DDDPlayground.Application/`) - Use case orchestration
+   - CQRS: Commands (`CreateOrderCommand`) for writes, Queries (`GetOrderQuery`) for reads
+   - MediatR handlers coordinate workflows: validate → call domain → persist → publish events
+   - Response DTOs (`OrderResponse`) with manual `FromDomain()` mapping
 
-## Project Setup and Structure
+3. **Infrastructure** (`DDDPlayground.Infrastructure/`) - Persistence implementation
+   - **Separate persistence entities** (`OrderEntity`, `OrderItemEntity`) - NOT domain models
+   - Manual mappers (`OrderMapper.ToEntity()` / `ToDomain()`) - NO AutoMapper
+   - Repository implementations (`OrderRepository`) - use EF Core internally, expose domain models
+   - `AppDbContext` with `DbSet<OrderEntity>` (not `DbSet<Order>`)
 
-- Guide users through creating a new .NET project with the appropriate templates.
-- Explain the purpose of each generated file and folder to build understanding of the project structure.
-- Demonstrate how to organize code using feature folders or domain-driven design principles.
-- Show proper separation of concerns with models, services, and data access layers.
-- Explain the Program.cs and configuration system in ASP.NET Core 9 including environment-specific settings.
+4. **ApiService** (`DDDPlayground.ApiService/`) - HTTP endpoints
+   - Minimal APIs with `MapGroup()`, `TypedResults`, static handlers
+   - Request DTOs (`CreateOrderRequest`) prevent over-posting
+   - Sends commands/queries via MediatR `ISender`
 
-## Nullable Reference Types
+### Three-Model Separation Pattern
 
-- Declare variables non-nullable, and check for `null` at entry points.
-- Always use `is null` or `is not null` instead of `== null` or `!= null`.
-- Trust the C# null annotations and don't add null checks when the type system says a value cannot be null.
+1. **Domain Models** - Rich business logic (`Order.cs` with private setters, business methods)
+2. **Persistence Models** - EF Core entities (`OrderEntity.cs` optimized for database)
+3. **API Models** - Request/Response DTOs (`CreateOrderRequest.cs`, `OrderResponse.cs`)
 
-## Data Access Patterns
+**Never mix these layers.** Map explicitly at boundaries.
 
-- Guide the implementation of a data access layer using Entity Framework Core.
-- Explain different options (SQL Server, SQLite, In-Memory) for development and production.
-- Demonstrate repository pattern implementation and when it's beneficial.
-- Show how to implement database migrations and data seeding.
-- Explain efficient query patterns to avoid common performance issues.
+## Running & Development Workflow
 
-## Authentication and Authorization
+### Run Application (Always use Aspire AppHost)
 
-- Guide users through implementing authentication using JWT Bearer tokens.
-- Explain OAuth 2.0 and OpenID Connect concepts as they relate to ASP.NET Core.
-- Show how to implement role-based and policy-based authorization.
-- Demonstrate integration with Microsoft Entra ID (formerly Azure AD).
-- Explain how to secure both controller-based and Minimal APIs consistently.
+```powershell
+# From solution root - starts PostgreSQL container + API service
+dotnet run --project src/DDDPlayground.AppHost/DDDPlayground.AppHost.csproj
+```
 
-## Validation and Error Handling
+Or use VS Code task: `Run Aspire AppHost`
 
-- Guide the implementation of model validation using data annotations and FluentValidation.
-- Explain the validation pipeline and how to customize validation responses.
-- Demonstrate a global exception handling strategy using middleware.
-- Show how to create consistent error responses across the API.
-- Explain problem details (RFC 7807) implementation for standardized error responses.
+Access:
+- Aspire Dashboard: `http://localhost:15000` (traces, metrics, logs, pgAdmin)
+- API Swagger: `https://localhost:7001/openapi`
+- API endpoints: `https://localhost:7001/api/orders`
 
-## API Versioning and Documentation
+### Database Migrations
 
-- Guide users through implementing and explaining API versioning strategies.
-- Demonstrate Swagger/OpenAPI implementation with proper documentation.
-- Show how to document endpoints, parameters, responses, and authentication.
-- Explain versioning in both controller-based and Minimal APIs.
-- Guide users on creating meaningful API documentation that helps consumers.
+Database auto-migrates on startup in Development (see `Program.cs`). For manual migrations:
 
-## Logging and Monitoring
+```powershell
+# From solution root
+dotnet ef migrations add <Name> --project src/DDDPlayground.Infrastructure --startup-project src/DDDPlayground.ApiService
+dotnet ef database update --project src/DDDPlayground.Infrastructure --startup-project src/DDDPlayground.ApiService
+```
 
-- Guide the implementation of structured logging using Serilog or other providers.
-- Explain the logging levels and when to use each.
-- Demonstrate integration with Application Insights for telemetry collection.
-- Show how to implement custom telemetry and correlation IDs for request tracking.
-- Explain how to monitor API performance, errors, and usage patterns.
+**Migrations live in Infrastructure** - they reference `OrderEntity`, not `Order`.
 
-## Performance Optimization
+## DDD Patterns Implementation Guide
 
-- Guide users on implementing caching strategies (in-memory, distributed, response caching).
-- Explain asynchronous programming patterns and why they matter for API performance.
-- Demonstrate pagination, filtering, and sorting for large data sets.
-- Show how to implement compression and other performance optimizations.
-- Explain how to measure and benchmark API performance.
+### Aggregate Root Pattern (`Order.cs`)
 
-## Deployment and DevOps
+```csharp
+// ✅ Correct: Private constructor + Factory method
+private Order() { } // EF Core reconstitution only
+public static Order Create(CustomerId customerId, IEnumerable<OrderItem> items)
+{
+    // Enforce invariants at creation
+    if (!items.Any()) throw new DomainException("Order must have items");
+    // ... create and return
+}
+```
 
-- Guide users through containerizing their API using .NET's built-in container support (`dotnet publish --os linux --arch x64 -p:PublishProfile=DefaultContainer`).
-- Explain the differences between manual Dockerfile creation and .NET's container publishing features.
-- Explain CI/CD pipelines for NET applications.
-- Demonstrate deployment to Azure App Service, Azure Container Apps, or other hosting options.
-- Show how to implement health checks and readiness probes.
-- Explain environment-specific configurations for different deployment stages.
+- Control all access to child entities (`OrderItem`) through aggregate root
+- Private setters, expose `IReadOnlyList<OrderItem>` to prevent external modification
+- Business methods: `Confirm()`, `Cancel()`, `AddItem()` - NOT property setters
+- Raise domain events: `RaiseDomainEvent(new OrderConfirmedEvent(...))`
+
+### Value Objects Pattern (`Money.cs`, `OrderId.cs`)
+
+```csharp
+// ✅ Use record for value equality and immutability
+public sealed record Money(decimal Amount, string Currency)
+{
+    // Operators for domain operations
+    public static Money operator +(Money left, Money right) { ... }
+}
+```
+
+- Immutable (`record` or `{ get; init; }`), validate in constructor
+- Value equality (not reference), use `sealed record`
+- Encapsulate validation: `new Money(-10, "USD")` throws exception
+
+### Repository Pattern
+
+```csharp
+// Domain layer: IOrderRepository (works with domain Order)
+Task<Order?> GetByIdAsync(OrderId id);
+Task AddAsync(Order order);
+
+// Infrastructure: OrderRepository implementation
+public async Task<Order?> GetByIdAsync(OrderId id)
+{
+    var entity = await _context.Orders.Include(o => o.Items)
+        .FirstOrDefaultAsync(o => o.Id == id.Value);
+    return entity is null ? null : OrderMapper.ToDomain(entity); // Map!
+}
+```
+
+- Interface in Domain, implementation in Infrastructure
+- Public API uses domain models (`Order`), internal uses persistence models (`OrderEntity`)
+- Aggregate-focused methods (not generic `IRepository<T>`)
+
+### Domain Events Pattern
+
+```csharp
+// 1. Define in Domain/Events/
+public sealed record OrderConfirmedEvent(OrderId OrderId, DateTime ConfirmedAt) : IDomainEvent;
+
+// 2. Raise in aggregate
+protected void RaiseDomainEvent(IDomainEvent domainEvent) { _domainEvents.Add(domainEvent); }
+
+// 3. Publish after persistence (Application layer handler)
+await _unitOfWork.SaveChangesAsync();
+await _domainEventPublisher.PublishDomainEventsAsync(order);
+
+// 4. Handle via MediatR notification (Application/Orders/EventHandlers/)
+public class OrderConfirmedEventHandler : INotificationHandler<OrderConfirmedNotification> { ... }
+```
+
+Events raised during business operations, dispatched AFTER successful persistence.
+
+### CQRS Lite with MediatR
+
+```csharp
+// Commands (writes) - Application/Orders/CreateOrder/
+public sealed record CreateOrderCommand : IRequest<OrderResponse> { ... }
+public sealed class CreateOrderHandler : IRequestHandler<CreateOrderCommand, OrderResponse>
+{
+    public async Task<OrderResponse> Handle(CreateOrderCommand request, CancellationToken ct)
+    {
+        // 1. Map DTO → Domain
+        var order = Order.Create(customerId, orderItems);
+        // 2. Persist
+        await _orderRepository.AddAsync(order);
+        await _unitOfWork.SaveChangesAsync();
+        // 3. Publish events
+        await _domainEventPublisher.PublishDomainEventsAsync(order);
+        // 4. Map Domain → Response DTO
+        return OrderResponse.FromDomain(order);
+    }
+}
+
+// Queries (reads) - Application/Orders/GetOrder/
+public sealed record GetOrderQuery(Guid OrderId) : IRequest<OrderResponse?>;
+```
+
+Organize by feature folder: `CreateOrder/`, `ConfirmOrder/`, `GetOrder/`.
+
+### Minimal API Endpoints
+
+```csharp
+// ApiService/Endpoints/OrderEndpoints.cs
+public static RouteGroupBuilder MapOrderEndpoints(this IEndpointRouteBuilder routes)
+{
+    var group = routes.MapGroup("/api/orders").WithTags("Orders");
+    
+    group.MapPost("/", CreateOrderAsync)
+        .Produces<OrderResponse>(201)
+        .Produces<ProblemDetails>(400);
+    
+    return group;
+}
+
+// Static handler for performance
+private static async Task<Results<Created<OrderResponse>, BadRequest<ProblemDetails>>> 
+    CreateOrderAsync(CreateOrderRequest request, ISender sender, CancellationToken ct)
+{
+    var command = new CreateOrderCommand { ... }; // Map request → command
+    var response = await sender.Send(command, ct);
+    return TypedResults.Created($"/api/orders/{response.Id}", response);
+}
+```
+
+Use `TypedResults` (not `Results.Ok()`), static handlers, `MapGroup()` for organization.
+
+## Adding New Features (Step-by-Step)
+
+### Example: Add "Ship Order" Feature
+
+1. **Domain**: Add business logic to `Order.cs`
+   ```csharp
+   public void Ship()
+   {
+       if (Status != OrderStatus.Confirmed) throw new DomainException("Only confirmed orders can ship");
+       Status = OrderStatus.Shipped;
+       RaiseDomainEvent(new OrderShippedEvent(Id, DateTime.UtcNow));
+   }
+   ```
+
+2. **Domain Events**: Create `OrderShippedEvent.cs` in `Domain/Events/`
+
+3. **Application Command**: Create `ShipOrder/ShipOrderCommand.cs` and `ShipOrderHandler.cs`
+   ```csharp
+   public sealed record ShipOrderCommand(Guid OrderId) : IRequest<OrderResponse>;
+   
+   public sealed class ShipOrderHandler : IRequestHandler<ShipOrderCommand, OrderResponse>
+   {
+       public async Task<OrderResponse> Handle(ShipOrderCommand request, CancellationToken ct)
+       {
+           var order = await _orderRepository.GetByIdAsync(new OrderId(request.OrderId));
+           order.Ship(); // Business logic
+           await _orderRepository.UpdateAsync(order);
+           await _unitOfWork.SaveChangesAsync();
+           await _domainEventPublisher.PublishDomainEventsAsync(order);
+           return OrderResponse.FromDomain(order);
+       }
+   }
+   ```
+
+4. **API Endpoint**: Add to `OrderEndpoints.cs`
+   ```csharp
+   group.MapPost("/{id:guid}/ship", ShipOrderAsync);
+   ```
+
+5. **Event Handler** (optional): Create `OrderShippedEventHandler.cs` for side effects
+
+6. **Migration**: If persistence changes needed, add migration and update `OrderEntity`/configurations
+
+## Common Mistakes to Avoid
+
+❌ **DON'T** add EF Core attributes to domain models (`Order.cs`)
+✅ **DO** use separate `OrderEntity` with EF configuration in Infrastructure
+
+❌ **DON'T** use `AutoMapper` - manual mapping is intentional for education
+✅ **DO** write explicit `ToDomain()` / `ToEntity()` methods in `Mappers/`
+
+❌ **DON'T** reference Infrastructure from Domain
+✅ **DO** define interfaces in Domain, implement in Infrastructure
+
+❌ **DON'T** expose `List<OrderItem>` with public setter
+✅ **DO** expose `IReadOnlyList<OrderItem>` with methods like `AddItem()`
+
+❌ **DON'T** run API service directly - Docker/PostgreSQL won't be available
+✅ **DO** run via Aspire AppHost (handles service orchestration)
+
+❌ **DON'T** put business logic in handlers or controllers
+✅ **DO** put business logic in domain aggregates and services
+
+## Technology Stack
+
+- **.NET 10.0** (requires SDK 10.0.100+, see `global.json`)
+- **.NET Aspire 13.0** (orchestration, observability)
+- **PostgreSQL** (Aspire-hosted container)
+- **EF Core 10.0** (with separate persistence models)
+- **MediatR 13.1** (CQRS commands/queries)
+- **Minimal APIs** (ASP.NET Core)
+
+## Key Files Reference
+
+| File | Purpose |
+|------|---------|
+| `Domain/Orders/Order.cs` | Aggregate root - business rules, factory methods, encapsulation |
+| `Infrastructure/Persistence/Models/OrderEntity.cs` | Separate EF entity for database |
+| `Infrastructure/Persistence/Mappers/OrderMapper.cs` | Manual domain ↔ persistence mapping |
+| `Application/Orders/CreateOrder/CreateOrderHandler.cs` | CQRS command handler pattern |
+| `ApiService/Endpoints/OrderEndpoints.cs` | Minimal API with MapGroup/TypedResults |
+| `AppHost/AppHost.cs` | Aspire orchestration - adds PostgreSQL + API service |
+| `ApiService/Program.cs` | API setup - Aspire, DbContext, MediatR registration |
+
+## Educational Focus
+
+This project demonstrates **correct patterns through working code**, not just documentation. When adding features:
+
+1. Follow existing patterns (study similar features first)
+2. Maintain strict layer separation (Domain → Application → Infrastructure → API)
+3. Write XML doc comments explaining the "why" for patterns
+4. Prefer clarity over cleverness - this is for learning
